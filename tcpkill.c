@@ -21,19 +21,19 @@
 #include "pcaputil.h"
 #include "version.h"
 
-#define DEFAULT_SEVERITY	3
+#define DEFAULT_SEVERITY 3
 
-int	Opt_severity = DEFAULT_SEVERITY;
-int	pcap_off;
-pcap_t  *pd;
-int     Opt_max_kill = 0;
-int     kill_counter = 0;
+int Opt_severity = DEFAULT_SEVERITY;
+int pcap_off;
+pcap_t *pd;
+int Opt_max_kill = 0;
+int kill_counter = 0;
 
 static void
 usage(void)
 {
 	fprintf(stderr, "Version: " VERSION "\n"
-		"Usage: tcpkill [-i interface] [-m max kills] [-1..9] expression\n");
+					"Usage: tcpkill [-i interface] [-m max kills] [-1..9] expression\n");
 	exit(1);
 }
 
@@ -54,51 +54,52 @@ tcp_kill_cb(u_char *user, const struct pcap_pkthdr *pcap, const u_char *pkt)
 	ip = (struct libnet_ipv4_hdr *)pkt;
 	if (ip->ip_p != IPPROTO_TCP)
 		return;
-	
+
 	tcp = (struct libnet_tcp_hdr *)(pkt + (ip->ip_hl << 2));
-	if (tcp->th_flags & (TH_SYN|TH_FIN|TH_RST))
+	if (tcp->th_flags & (TH_SYN | TH_FIN | TH_RST))
 		return;
 
 	seq = ntohl(tcp->th_ack);
 	win = ntohs(tcp->th_win);
-	
+
 	snprintf(ctext, sizeof(ctext), "%s:%d > %s:%d:",
-		 libnet_addr2name4(ip->ip_src.s_addr, LIBNET_DONT_RESOLVE),
-		 ntohs(tcp->th_sport),
-		 libnet_addr2name4(ip->ip_dst.s_addr, LIBNET_DONT_RESOLVE),
-		 ntohs(tcp->th_dport));
-	
-	for (i = 0; i < Opt_severity; i++) {
+			 libnet_addr2name4(ip->ip_src.s_addr, LIBNET_DONT_RESOLVE),
+			 ntohs(tcp->th_sport),
+			 libnet_addr2name4(ip->ip_dst.s_addr, LIBNET_DONT_RESOLVE),
+			 ntohs(tcp->th_dport));
+
+	for (i = 0; i < Opt_severity; i++)
+	{
 		seq += (i * win);
-		
+
 		libnet_clear_packet(l);
-		
+
 		libnet_build_tcp(ntohs(tcp->th_dport), ntohs(tcp->th_sport),
-				 seq, 0, TH_RST, 0, 0, 0, LIBNET_TCP_H, 
-				 NULL, 0, l, 0);
-		
+						 seq, 0, TH_RST, 0, 0, 0, LIBNET_TCP_H,
+						 NULL, 0, l, 0);
+
 		libnet_build_ipv4(LIBNET_IPV4_H + LIBNET_TCP_H, 0,
-				  libnet_get_prand(LIBNET_PRu16), 0, 64,
-				  IPPROTO_TCP, 0, ip->ip_dst.s_addr,
-				  ip->ip_src.s_addr, NULL, 0, l, 0);
-		
+						  libnet_get_prand(LIBNET_PRu16), 0, 64,
+						  IPPROTO_TCP, 0, ip->ip_dst.s_addr,
+						  ip->ip_src.s_addr, NULL, 0, l, 0);
+
 		if (libnet_write(l) < 0)
 			warn("write");
-		
+
 		fprintf(stderr, "%s R %lu:%lu(0) win 0\n",
-                        ctext,
-                        (unsigned long) seq,
-                        (unsigned long) seq);
+				ctext,
+				(unsigned long)seq,
+				(unsigned long)seq);
 	}
 
-        ++kill_counter;
-        if (Opt_max_kill && kill_counter >= Opt_max_kill) {
-          pcap_breakloop(pd);
-        }
+	++kill_counter;
+	if (Opt_max_kill && kill_counter >= Opt_max_kill)
+	{
+		pcap_breakloop(pd);
+	}
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	extern char *optarg;
 	extern int optind;
@@ -106,19 +107,29 @@ main(int argc, char *argv[])
 	char *p, *intf, *filter, ebuf[PCAP_ERRBUF_SIZE];
 	char libnet_ebuf[LIBNET_ERRBUF_SIZE];
 	libnet_t *l;
-	
+
 	intf = NULL;
-	
-	while ((c = getopt(argc, argv, "i:m:123456789h?V")) != -1) {
-		switch (c) {
+
+	while ((c = getopt(argc, argv, "i:m:123456789h?V")) != -1)
+	{
+		switch (c)
+		{
 		case 'i':
 			intf = optarg;
 			break;
 		case 'm':
 			Opt_max_kill = atoi(optarg);
 			break;
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
 			p = argv[optind - 1];
 			if (p[0] == '-' && p[1] == c && p[2] == '\0')
 				Opt_severity = atoi(++p);
@@ -135,28 +146,29 @@ main(int argc, char *argv[])
 
 	argc -= optind;
 	argv += optind;
-	
+
 	if (argc == 0)
 		usage();
-	
+
 	filter = copy_argv(argv);
-	
-	if ((pd = pcap_init(intf, filter, 64)) == NULL)
+	fprintf(stderr, "killing connectiong with filter '%s'", filter);
+
+	if ((pd = pcap_init_internal(intf, filter, 64)) == NULL)
 		errx(1, "couldn't initialize sniffing");
 
 	if ((pcap_off = pcap_dloff(pd)) < 0)
 		errx(1, "couldn't determine link layer offset");
-	
+
 	if ((l = libnet_init(LIBNET_RAW4, intf, libnet_ebuf)) == NULL)
 		errx(1, "couldn't initialize sending");
-	
+
 	libnet_seed_prand(l);
-	
+
 	warnx("listening on %s [%s]", intf, filter);
-	
+
 	pcap_loop(pd, -1, tcp_kill_cb, (u_char *)l);
-  
+
 	/* NOTREACHED */
-	
+
 	exit(0);
 }

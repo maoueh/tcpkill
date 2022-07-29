@@ -11,10 +11,10 @@
 #ifndef PCAPUTIL_H
 #define PCAPUTIL_H
 
-pcap_t *pcap_init(char *intf, char *filter, int snaplen);
+pcap_t *pcap_init_internal(char *intf, char *filter, int snaplen);
 
-int	pcap_dloff(pcap_t *pd);
+int pcap_dloff(pcap_t *pd);
 
-char   *copy_argv(char **argv);
+char *copy_argv(char **argv);
 
 #endif /* PCAPUTIL_H */
