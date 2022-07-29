@@ -17,6 +17,8 @@ Compile
 make LDFLAGS="-lpcap -lnet -L/opt/homebrew/opt/libpcap/lib -L/opt/homebrew/opt/libnet/lib" CFLAGS="-Wall -I/opt/homebrew/opt/libpcap/include -I/opt/homebrew/opt/libnet/include"
 ```
 
+> If you get compilation that includes are not found, ensure with `file /opt/homebrew/opt/libpcap` and `/opt/homebrew/opt/libnet` exist and are valid directories. If there are not, you can use `brew list libpcap` and `brew list libnet` to find where the files are located and update the `make` invocation above with the correct location for on your machine.
+
 Install:
 
 ```
